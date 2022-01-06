@@ -1,3 +1,5 @@
+use crate::converters::JsonGetError;
+
 pub mod converters;
 
 #[macro_export]
@@ -30,8 +32,11 @@ macro_rules! unwatch {
 #[macro_export]
 macro_rules! tx {
     ($conn:expr, $pipe_name:ident, $keys:expr, $body:expr) => {{
+        use redis_utils::TxError;
         use redis_utils::TxError::{Abort, DbError, Serialization};
         use redis_utils::{unwatch, watch};
+        use redis::pipe;
+        use redis::Pipeline;
 
         let ret: Result<_, TxError<_>> = loop {
             watch!($conn, $keys);
@@ -69,6 +74,15 @@ pub enum TxError<T> {
     Abort(T),
     Serialization(serde_json::Error),
     DbError(redis::RedisError),
+}
+
+impl<U> From<JsonGetError> for TxError<U> {
+    fn from(err: JsonGetError) -> Self {
+        match err {
+            JsonGetError::Serialization(err) => TxError::Serialization(err),
+            JsonGetError::DbError(err) => TxError::DbError(err)
+        }
+    }
 }
 
 impl<U> From<redis::RedisError> for TxError<U> {

@@ -1,4 +1,4 @@
-use redis::RedisError;
+pub mod converters;
 
 #[macro_export]
 macro_rules! watch {
@@ -30,7 +30,9 @@ macro_rules! unwatch {
 #[macro_export]
 macro_rules! tx {
     ($conn:expr, $pipe_name:ident, $keys:expr, $body:expr) => {{
+        use redis_utils::TxError::{Abort, DbError, Serialization};
         use redis_utils::{unwatch, watch};
+
         let ret: Result<_, TxError<_>> = loop {
             watch!($conn, $keys);
 
@@ -44,6 +46,10 @@ macro_rules! tx {
                 Err(Abort(value)) => {
                     unwatch!($conn);
                     break Err(Abort(value));
+                }
+                Err(Serialization(value)) => {
+                    unwatch!($conn);
+                    break Err(Serialization(value));
                 }
                 Err(DbError(red_err)) => break Err(DbError(red_err)),
             };
@@ -61,11 +67,12 @@ macro_rules! tx {
 
 pub enum TxError<T> {
     Abort(T),
-    DbError(RedisError),
+    Serialization(serde_json::Error),
+    DbError(redis::RedisError),
 }
 
-impl<U> From<RedisError> for TxError<U> {
-    fn from(err: RedisError) -> Self {
+impl<U> From<redis::RedisError> for TxError<U> {
+    fn from(err: redis::RedisError) -> Self {
         TxError::DbError(err)
     }
 }

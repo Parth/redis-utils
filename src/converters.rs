@@ -66,7 +66,7 @@ where
     C: ConnectionLike + Send + Sync,
     Val: DeserializeOwned,
 {
-    async fn json_get<Key: ToRedisArgs + Send + Sync>(
+    async fn json_get<Key: ToRedisArgs + Send + Sync>   (
         &mut self,
         key: Key,
     ) -> Result<Val, JsonGetError> {
@@ -80,7 +80,12 @@ where
     }
 
     async fn json_mget<Key: ToRedisArgs + Send + Sync>(&mut self, keys: Key) -> Result<Vec<Val>, JsonGetError> {
-        let val: Vec<String> = self.get(keys).await.unwrap();
-        Ok(val.iter().map(|string| serde_json::from_str(string).unwrap()).collect())
+        if keys.is_single_arg() {
+            let val: Option<String> = self.get(keys).await.unwrap();
+            Ok(val.iter().map(|string| serde_json::from_str(string).unwrap()).collect())
+        } else {
+            let val: Vec<String> = self.get(keys).await.unwrap();
+            Ok(val.iter().map(|string| serde_json::from_str(string).unwrap()).collect())
+        }
     }
 }

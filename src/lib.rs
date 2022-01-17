@@ -32,11 +32,11 @@ macro_rules! unwatch {
 #[macro_export]
 macro_rules! tx {
     ($conn:expr, $pipe_name:ident, $keys:expr, $body:expr) => {{
+        use redis::pipe;
+        use redis::Pipeline;
         use redis_utils::TxError;
         use redis_utils::TxError::{Abort, DbError, Serialization};
         use redis_utils::{unwatch, watch};
-        use redis::pipe;
-        use redis::Pipeline;
 
         let ret: Result<_, TxError<_>> = loop {
             watch!($conn, $keys);
@@ -80,7 +80,7 @@ impl<U> From<JsonGetError> for TxError<U> {
     fn from(err: JsonGetError) -> Self {
         match err {
             JsonGetError::Serialization(err) => TxError::Serialization(err),
-            JsonGetError::DbError(err) => TxError::DbError(err)
+            JsonGetError::DbError(err) => TxError::DbError(err),
         }
     }
 }

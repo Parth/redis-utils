@@ -29,7 +29,7 @@ impl<U> JsonSet<U> for Pipeline {
 #[derive(Debug)]
 pub enum JsonGetError {
     Serialization(serde_json::Error),
-    DbError(redis::RedisError)
+    DbError(redis::RedisError),
 }
 
 impl From<RedisError> for JsonGetError {
@@ -45,7 +45,7 @@ impl From<serde_json::Error> for JsonGetError {
 }
 
 #[async_trait]
-pub trait JsonGet<Val: DeserializeOwned> {
+pub trait JsonGet<Val> {
     async fn json_get<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         key: Key,
@@ -66,7 +66,7 @@ where
     C: ConnectionLike + Send + Sync,
     Val: DeserializeOwned,
 {
-    async fn json_get<Key: ToRedisArgs + Send + Sync>   (
+    async fn json_get<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         key: Key,
     ) -> Result<Val, JsonGetError> {
@@ -74,18 +74,30 @@ where
         Ok(serde_json::from_str(&val)?)
     }
 
-    async fn maybe_json_get<Key: ToRedisArgs + Send + Sync>(&mut self, key: Key) -> Result<Option<Val>, JsonGetError> {
+    async fn maybe_json_get<Key: ToRedisArgs + Send + Sync>(
+        &mut self,
+        key: Key,
+    ) -> Result<Option<Val>, JsonGetError> {
         let val: Option<String> = self.get(key).await.unwrap();
         Ok(val.map(|string| serde_json::from_str(&string).unwrap()))
     }
 
-    async fn json_mget<Key: ToRedisArgs + Send + Sync>(&mut self, keys: Key) -> Result<Vec<Val>, JsonGetError> {
+    async fn json_mget<Key: ToRedisArgs + Send + Sync>(
+        &mut self,
+        keys: Key,
+    ) -> Result<Vec<Val>, JsonGetError> {
         if keys.is_single_arg() {
             let val: Option<String> = self.get(keys).await.unwrap();
-            Ok(val.iter().map(|string| serde_json::from_str(string).unwrap()).collect())
+            Ok(val
+                .iter()
+                .map(|string| serde_json::from_str(string).unwrap())
+                .collect())
         } else {
             let val: Vec<String> = self.get(keys).await.unwrap();
-            Ok(val.iter().map(|string| serde_json::from_str(string).unwrap()).collect())
+            Ok(val
+                .iter()
+                .map(|string| serde_json::from_str(string).unwrap())
+                .collect())
         }
     }
 }

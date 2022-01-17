@@ -78,8 +78,11 @@ where
         &mut self,
         key: Key,
     ) -> Result<Option<Val>, JsonGetError> {
-        let val: Option<String> = self.get(key).await.unwrap();
-        Ok(val.map(|string| serde_json::from_str(&string).unwrap()))
+        let val: Option<String> = self.get(key).await?;
+        match val {
+            Some(string) => Ok(Some(serde_json::from_str(&string)?)),
+            None => Ok(None),
+        }
     }
 
     async fn json_mget<Key: ToRedisArgs + Send + Sync>(
@@ -87,17 +90,14 @@ where
         keys: Key,
     ) -> Result<Vec<Val>, JsonGetError> {
         if keys.is_single_arg() {
-            let val: Option<String> = self.get(keys).await.unwrap();
-            Ok(val
-                .iter()
-                .map(|string| serde_json::from_str(string).unwrap())
-                .collect())
+            Ok(self.maybe_json_get(keys).await?.into_iter().collect())
         } else {
-            let val: Vec<String> = self.get(keys).await.unwrap();
-            Ok(val
-                .iter()
-                .map(|string| serde_json::from_str(string).unwrap())
-                .collect())
+            let strings: Vec<String> = self.get(keys).await?;
+            let mut values = vec![];
+            for string in strings {
+                values.push(serde_json::from_str(&string)?)
+            }
+            Ok(values)
         }
     }
 }

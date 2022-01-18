@@ -64,12 +64,34 @@ pub trait JsonGet<Val> {
     ) -> Result<Vec<Val>, JsonGetError>;
 }
 
+/// ```no_run
+/// extern crate redis_utils;
+/// extern crate redis;
+///
+/// use serde::Deserialize;
+/// use redis::{RedisResult, AsyncCommands};
+/// use redis_utils::converters::JsonGet;
+///
+/// #[derive(Deserialize)]
+/// struct Person {
+///     name: String,
+///     age: u8,
+/// }
+///
+/// async fn json_demo() -> RedisResult<()> {
+///     let mut con = redis::Client::open("redis://127.0.0.1/")?.get_async_connection().await?;
+///     let a: Person = con.json_get("key").await.unwrap();
+///
+///     Ok(())
+/// }
+/// ```
 #[async_trait]
 impl<C, Val> JsonGet<Val> for C
 where
     C: ConnectionLike + Send + Sync,
     Val: DeserializeOwned,
 {
+    /// get -> deserialize it from json
     async fn json_get<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         key: Key,
@@ -78,6 +100,7 @@ where
         Ok(serde_json::from_str(&val)?)
     }
 
+    /// get -> deserialize it from json into an optional value
     async fn maybe_json_get<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         key: Key,
@@ -89,6 +112,7 @@ where
         }
     }
 
+    /// mget -> deserialize it from json into a vector of values
     async fn json_mget<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         keys: Key,
@@ -105,6 +129,7 @@ where
         }
     }
 
+    /// watch -> mget -> deserialize it from json into a vector of values
     async fn watch_json_mget<Key: ToRedisArgs + Send + Sync>(
         &mut self,
         key: Key,

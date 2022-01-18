@@ -5,7 +5,7 @@ pub mod converters;
 #[macro_export]
 macro_rules! watch {
     ($conn:expr, $keys:expr) => {
-        if let Err(e) = deadpool_redis::redis::cmd("WATCH")
+        if let Err(e) = redis::cmd("WATCH")
             .arg($keys)
             .query_async::<_, ()>($conn)
             .await
@@ -18,10 +18,7 @@ macro_rules! watch {
 #[macro_export]
 macro_rules! unwatch {
     ($conn:expr) => {
-        if let Err(e) = deadpool_redis::redis::cmd("UNWATCH")
-            .query_async::<_, ()>($conn)
-            .await
-        {
+        if let Err(e) = redis::cmd("UNWATCH").query_async::<_, ()>($conn).await {
             break Err(DbError(e));
         }
     };

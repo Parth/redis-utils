@@ -58,6 +58,10 @@ pub trait JsonGet<Val> {
         &mut self,
         key: Key,
     ) -> Result<Vec<Val>, JsonGetError>;
+    async fn watch_json_mget<Key: ToRedisArgs + Send + Sync>(
+        &mut self,
+        key: Key,
+    ) -> Result<Vec<Val>, JsonGetError>;
 }
 
 #[async_trait]
@@ -99,5 +103,13 @@ where
             }
             Ok(values)
         }
+    }
+
+    async fn watch_json_mget<Key: ToRedisArgs + Send + Sync>(
+        &mut self,
+        key: Key,
+    ) -> Result<Vec<Val>, JsonGetError> {
+        redis::cmd("WATCH").arg(&key).query_async(self).await?;
+        Ok(self.json_mget(key).await?)
     }
 }

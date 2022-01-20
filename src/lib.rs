@@ -200,7 +200,7 @@ macro_rules! tx {
                 Err(DbError(red_err)) => break Err(DbError(red_err)),
             };
 
-            let tx_success: Option<_> = pipeline.query_async($conn).await.unwrap();
+            let tx_success: Option<_> = pipeline.query_async($conn).await?;
 
             if let Some(response) = tx_success {
                 unwatch!($conn);

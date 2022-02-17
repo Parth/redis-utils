@@ -5,6 +5,27 @@ use redis::{AsyncCommands, Pipeline, RedisError, ToRedisArgs};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+pub trait PipelineJsonSet<U> {
+    fn json_set<Key: ToRedisArgs, Val: Serialize>(
+        &mut self,
+        key: Key,
+        val: Val,
+    ) -> Result<&mut Self, TxError<U>>;
+}
+
+impl<U> PipelineJsonSet<U> for Pipeline {
+    fn json_set<Key: ToRedisArgs, Val: Serialize>(
+        &mut self,
+        key: Key,
+        val: Val,
+    ) -> Result<&mut Self, TxError<U>> {
+        Ok(self.set(
+            key,
+            serde_json::to_string(&val).map_err(TxError::Serialization)?,
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub enum JsonSetError {
     Serialization(serde_json::Error),
@@ -23,14 +44,6 @@ impl From<serde_json::Error> for JsonSetError {
     }
 }
 
-pub trait PipelineJsonSet<U> {
-    fn json_set<Key: ToRedisArgs, Val: Serialize>(
-        &mut self,
-        key: Key,
-        val: Val,
-    ) -> Result<&mut Self, TxError<U>>;
-}
-
 #[async_trait]
 pub trait JsonSet {
     async fn json_set<Key: ToRedisArgs + Send + Sync, Val: Serialize + Send + Sync>(
@@ -38,19 +51,6 @@ pub trait JsonSet {
         key: Key,
         val: Val,
     ) -> Result<(), JsonSetError>;
-}
-
-impl<U> PipelineJsonSet<U> for Pipeline {
-    fn json_set<Key: ToRedisArgs, Val: Serialize>(
-        &mut self,
-        key: Key,
-        val: Val,
-    ) -> Result<&mut Self, TxError<U>> {
-        Ok(self.set(
-            key,
-            serde_json::to_string(&val).map_err(TxError::Serialization)?,
-        ))
-    }
 }
 
 #[async_trait]

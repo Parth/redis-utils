@@ -1,7 +1,7 @@
 use crate::TxError;
 use async_trait::async_trait;
 use redis::aio::ConnectionLike;
-use redis::{AsyncCommands, Connection, Pipeline, RedisError, ToRedisArgs};
+use redis::{AsyncCommands, Pipeline, RedisError, ToRedisArgs};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -32,8 +32,8 @@ pub trait PipelineJsonSet<U> {
 }
 
 #[async_trait]
-pub trait JsonSet<Val> {
-    async fn json_set<Key: ToRedisArgs + Send + Sync>(
+pub trait JsonSet {
+    async fn json_set<Key: ToRedisArgs + Send + Sync, Val: Serialize + Send + Sync>(
         &mut self,
         key: Key,
         val: Val,
@@ -54,16 +54,16 @@ impl<U> PipelineJsonSet<U> for Pipeline {
 }
 
 #[async_trait]
-impl<C, Val> JsonSet<Val> for C
-    where
-        C: ConnectionLike + Send + Sync,
-        Val: Serialize + Send + Sync,
+impl<C> JsonSet for C
+where
+    C: ConnectionLike + Send + Sync,
 {
-    async fn json_set<Key: ToRedisArgs + Send + Sync>(&mut self, key: Key, val: Val) -> Result<(), JsonSetError> {
-        Ok(self.set(
-            key,
-            serde_json::to_string(&val)?,
-        ).await?)
+    async fn json_set<Key: ToRedisArgs + Send + Sync, Val: Serialize + Send + Sync>(
+        &mut self,
+        key: Key,
+        val: Val,
+    ) -> Result<(), JsonSetError> {
+        Ok(self.set(key, serde_json::to_string(&val)?).await?)
     }
 }
 
